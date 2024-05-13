@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	a := application.NewConvertVideoToImage("video.mp4")
+	a := application.NewConvertVideoToImage("video.mp4", "result/images.pdf", 10)
 	a.Convert()
 
 	// cmd.Execute()
