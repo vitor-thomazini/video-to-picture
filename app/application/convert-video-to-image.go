@@ -3,180 +3,143 @@ package application
 import (
 	"fmt"
 	"image"
-	"image/color"
-	"image/draw"
 	"image/jpeg"
 	"log"
 	"os"
 
+	"github.com/vitor-thomazini/video-to-picture/app/domain"
 	"gocv.io/x/gocv"
 )
 
-const (
-	TOTAL_QUADRANTS = 7
-	MARGIN_Y        = 28
-	MARGIN_X        = 56
-	PADDING_X       = 64
-	PADDING_Y       = 64
-)
-
-type ImageSize struct {
-	height int
-	width  int
+type Counter struct {
+	frame    int
+	quadrant int
+	page     int
 }
 
-func NewA4ImageSize() ImageSize {
-	return ImageSize{
-		height: 3508,
-		width:  2480,
+func NewCounter() Counter {
+	return Counter{
+		frame:    0,
+		quadrant: 0,
+		page:     -1,
 	}
 }
 
-func (i ImageSize) GetFourthPartSize(img gocv.Mat) image.Point {
-	fmt.Println(img.Size()[0], i.height/2) // ABS(2340-1754)=600 ---> Y = 2340-600=1754-marginY
-	fmt.Println(img.Size()[1], i.width/2)  // ABS(1080-1240)=160  ---> X = 1080-(600x1080/2340)=803-marginX
-	// if img.Size()[0] < (i.height/2) && img.Size()[1] < (i.width/2) {
-	// 	return image.Point{
-	// 		Y: img.Size()[0],
-	// 		X: img.Size()[1],
-	// 	}
-	// }
-
-	// return image.Point{
-	// 	Y: int(((i.height / 2) * img.Size()[0]) / i.height),
-	// 	X: int(((i.width / 2) * img.Size()[1]) / i.width),
-	// }
-
-	return image.Point{
-		Y: 1754 - 60,
-		X: 803 - 60,
-	}
-
+func (c *Counter) InitQuadrant() {
+	c.quadrant = 0
 }
 
-func NewFourthPartA4ImageSize() ImageSize {
-	return ImageSize{
-		height: 3508 / 2,
-		width:  2480 / 2,
-	}
+func (c *Counter) IncQuadrant() {
+	c.quadrant += 1
+}
+
+func (c *Counter) IncFrame() {
+	c.frame += 1
+}
+
+func (c *Counter) IncPage() {
+	c.page += 1
 }
 
 type ConvertVideoToImage struct {
-	filepath string
+	filepath         string
+	totalFrameInPage int
+	panel            image.Rectangle
+	counter          Counter
+	background       domain.Background
+	backgrounds      []domain.Background
+	style            domain.Style
 }
 
 func NewConvertVideoToImage(filepath string) ConvertVideoToImage {
 	return ConvertVideoToImage{
-		filepath: filepath,
+		filepath:         filepath,
+		totalFrameInPage: 6,
+		style: domain.Style{
+			MarginX:  48,
+			MarginY:  28,
+			PaddingX: 64,
+			PaddingY: 64,
+		},
+		counter:     NewCounter(),
+		backgrounds: make([]domain.Background, 0),
 	}
 }
 
-func (c ConvertVideoToImage) Convert() {
+func (c *ConvertVideoToImage) Convert() {
 	video, err := gocv.VideoCaptureFile(c.filepath)
 	if err != nil {
 		log.Fatalln("File not found")
 	}
 
 	img := gocv.NewMat()
-	size := NewA4ImageSize()
-
-	frame := 0
-	currentQuadrant := 0
-
-	// startPosition := image.Rectangle{}
-	backgrounds := make([]*image.RGBA, 0)
-	page := -1
-
-	var rectangle image.Rectangle
 	for video.IsOpened() {
 		canRead := video.Read(&img)
-		if canRead {
-			dst := gocv.NewMat()
-			resizePoint := size.GetFourthPartSize(img)
-			gocv.Resize(img, &dst, resizePoint, 0.1, 0.1, gocv.InterpolationLinear)
-
-			im, err := dst.ToImage()
-			if err != nil {
-				log.Fatalln(err)
-			}
-
-			if frame == 0 || frame%TOTAL_QUADRANTS == 0 {
-				background := image.NewRGBA(image.Rectangle{
-					Min: image.Point{X: 0, Y: 0},
-					Max: image.Point{X: size.width, Y: size.height},
-				})
-				draw.Draw(background, background.Bounds(), &image.Uniform{color.RGBA{255, 255, 255, 1.0}}, image.Point{}, draw.Src)
-				backgrounds = append(backgrounds, background)
-				currentQuadrant = 0
-				page += 1
-				fmt.Println("Initialize Page", frame)
-			}
-
-			// ROW 1
-			if currentQuadrant == 0 {
-				startPosition := image.Point{
-					X: im.Bounds().Min.X + MARGIN_X,
-					Y: im.Bounds().Min.Y + MARGIN_Y,
-				}
-				rectangle = image.Rectangle{startPosition, startPosition.Add(im.Bounds().Size())}
-				draw.Src.Draw(backgrounds[page], rectangle, im, image.Point{Y: 0, X: 0})
-			} else if currentQuadrant == 1 {
-				startPosition := image.Point{
-					X: rectangle.Max.X + PADDING_X,
-					Y: rectangle.Min.Y,
-				}
-				rectangle = image.Rectangle{startPosition, startPosition.Add(im.Bounds().Size())}
-				draw.Src.Draw(backgrounds[page], rectangle, im, image.Point{Y: 0, X: 0})
-			} else if currentQuadrant == 2 {
-				startPosition := image.Point{
-					X: rectangle.Max.X + PADDING_X,
-					Y: rectangle.Min.Y,
-				}
-				rectangle = image.Rectangle{startPosition, startPosition.Add(im.Bounds().Size())}
-				draw.Src.Draw(backgrounds[page], rectangle, im, image.Point{Y: 0, X: 0})
-				// ROW 2
-			} else if currentQuadrant == 3 {
-				startPosition := image.Point{
-					X: im.Bounds().Min.X + MARGIN_X,
-					Y: rectangle.Max.Y + PADDING_Y,
-				}
-				rectangle = image.Rectangle{startPosition, startPosition.Add(im.Bounds().Size())}
-				draw.Src.Draw(backgrounds[page], rectangle, im, image.Point{Y: 0, X: 0})
-			} else if currentQuadrant == 4 {
-				startPosition := image.Point{
-					X: rectangle.Max.X + PADDING_X,
-					Y: rectangle.Min.Y,
-				}
-				rectangle = image.Rectangle{startPosition, startPosition.Add(im.Bounds().Size())}
-				draw.Src.Draw(backgrounds[page], rectangle, im, image.Point{Y: 0, X: 0})
-			} else if currentQuadrant == 5 {
-				startPosition := image.Point{
-					X: rectangle.Max.X + PADDING_X,
-					Y: rectangle.Min.Y,
-				}
-				rectangle = image.Rectangle{startPosition, startPosition.Add(im.Bounds().Size())}
-				draw.Src.Draw(backgrounds[page], rectangle, im, image.Point{Y: 0, X: 0})
-			}
-
-			gocv.WaitKey(20)
-
-			currentQuadrant += 1
-			frame += 1
-
-			if frame > 6 {
-				break
-			}
-		} else {
+		if !canRead {
 			break
 		}
+
+		background := c.initializePage()
+		frame := domain.NewFrame(img, background).Image()
+		c.drawQuadrants(frame)
+
+		c.counter.IncQuadrant()
+		c.counter.IncFrame()
+		if c.counter.frame > 6 {
+			break
+		}
+
 	}
 
-	fmt.Println("Total Pages", len(backgrounds))
-	for _, background := range backgrounds {
-		w, _ := os.Create(fmt.Sprintf("result/%d.jpg", page))
-		defer w.Close()
-		jpeg.Encode(w, background, &jpeg.Options{Quality: 90})
-		fmt.Println("=====")
-		page += 1
+	c.saveImages()
+}
+
+func (c *ConvertVideoToImage) initializePage() domain.Background {
+	if c.isStartedPage() {
+		c.background = domain.NewA4Dimension()
+		c.backgrounds = append(c.backgrounds, c.background)
+		c.counter.InitQuadrant()
+		c.counter.IncPage()
+		fmt.Println(c.counter, "initializePage")
 	}
+	return c.background
+}
+
+func (c *ConvertVideoToImage) drawQuadrants(frame image.Image) {
+	var quadrant domain.Quadrant
+
+	if c.isFirsQuadrantForFirstRow() {
+		quadrant = domain.NewStartQuadrant(frame, c.style)
+		quadrant.Draw(c.backgrounds[c.counter.page].Image())
+		c.panel = quadrant.Rectangle()
+	} else if c.isFirsQuadrantForAnyRow() {
+		quadrant = domain.NewStartQuadrantFromRect(c.panel, frame, c.style)
+		quadrant.Draw(c.backgrounds[c.counter.page].Image())
+		c.panel = quadrant.Rectangle()
+	} else {
+		quadrant = domain.NewMiddleQuadrant(c.panel, frame, c.style)
+		quadrant.Draw(c.backgrounds[c.counter.page].Image())
+		c.panel = quadrant.Rectangle()
+	}
+
+}
+
+func (c ConvertVideoToImage) saveImages() {
+	for idx, background := range c.backgrounds {
+		w, _ := os.Create(fmt.Sprintf("result/%d.jpg", idx))
+		defer w.Close()
+		jpeg.Encode(w, background.Image(), &jpeg.Options{Quality: 90})
+	}
+}
+
+func (c ConvertVideoToImage) isStartedPage() bool {
+	return (c.counter.frame == 0) || (c.counter.frame%c.totalFrameInPage == 0)
+}
+
+func (c ConvertVideoToImage) isFirsQuadrantForFirstRow() bool {
+	return c.counter.quadrant == 0
+}
+
+func (c ConvertVideoToImage) isFirsQuadrantForAnyRow() bool {
+	return (c.counter.quadrant != 0) && (c.counter.quadrant%3 == 0)
 }
