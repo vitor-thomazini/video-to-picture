@@ -29,6 +29,7 @@ func NewGetTextFromImage() GetTextFromImage {
 }
 
 func (g GetTextFromImage) Execute(image image.Image) []string {
+	g.client.SetLanguage("eng", "por")
 	buff := new(bytes.Buffer)
 	err := png.Encode(buff, image)
 	if err != nil {

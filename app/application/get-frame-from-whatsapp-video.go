@@ -2,9 +2,6 @@ package application
 
 import (
 	"fmt"
-	"image"
-	"image/color"
-	"image/draw"
 	"log"
 
 	"github.com/vitor-thomazini/video-to-picture/app/domain"
@@ -13,8 +10,6 @@ import (
 
 const (
 	MAX_VALUE_FRAMES_COUNTER = 20
-	BACKGROUND_HEIGHT        = 3508
-	BACKGROUND_WIDTH         = 2480
 )
 
 type FrameController struct {
@@ -55,14 +50,6 @@ func (c FrameController) LatestText() string {
 	return c.latestText
 }
 
-func (c FrameController) IsFirstFrameInScreen() bool {
-	return c.framesByScreenCounter == 0
-}
-
-func (c FrameController) CanCreateBackground(text string) bool {
-	return (c.IsFirstFrameInScreen() && c.latestText == text) || (c.latestText != text)
-}
-
 type GetFrameFromWhatsappVideoParams struct {
 	SrcFilepath string
 	DstFilepath string
@@ -99,50 +86,34 @@ func (w *GetFrameFromWhatsappVideo) Execute(params GetFrameFromWhatsappVideoPara
 			continue
 		}
 
+		// p := image.Point{X: domain.BACKGROUND_WIDTH, Y: domain.BACKGROUND_HEIGHT}
+		// dst := gocv.NewMat()
+		// gocv.Resize(*img, &dst, maxPoint, 0.1, 0.1, gocv.InterpolationLinear)
+		// i, _ := dst.ToImage()
+
 		frame := domain.NewFrame(*img).
-			Resize(BACKGROUND_HEIGHT, BACKGROUND_WIDTH)
+			Resize(domain.BACKGROUND_HEIGHT, domain.BACKGROUND_WIDTH)
 
 		texts := imageToText.Execute(frame)
+
 		// fmt.Println("texts", texts)
 		for _, text := range texts {
 			w.frameController.InitLatestText(text)
 			if w.frameController.latestText != text {
-				bkg := w.lastBkg(bkgList[w.frameController.LatestText()])
 				// Cria novo bkg caso esteja cheio
-				if bkg == (domain.Resource{}) || bkg.IsLastPicture() {
-					bkg = w.createBackground()
-					bkgList[w.frameController.LatestText()] = append(bkgList[w.frameController.LatestText()], bkg)
-				}
-				bkg = w.drawIn(frame, bkg)
-				bkgList[w.frameController.LatestText()] = w.updateLatestBkg(bkgList[w.frameController.LatestText()], bkg)
-
+				bkgList = domain.DrawAndUpdateResources(frame, bkgList, w.frameController.LatestText())
 				w.frameController.UpdateLatestText(text)
-
-				bkg = w.lastBkg(bkgList[w.frameController.LatestText()])
 				// Pode adicionar algo neste background
-				if bkg == (domain.Resource{}) || bkg.IsLastPicture() {
-					bkg = w.createBackground()
-					bkgList[w.frameController.LatestText()] = append(bkgList[w.frameController.LatestText()], bkg)
-				}
+				bkgList, _ = domain.AppendLastResourceToResourceMap(bkgList, w.frameController.LatestText())
 			} else {
-				bkg := w.lastBkg(bkgList[w.frameController.LatestText()])
 				// Cria novo bkg caso esteja cheio
-				if bkg == (domain.Resource{}) || bkg.IsLastPicture() {
-					bkg = w.createBackground()
-					bkgList[w.frameController.LatestText()] = append(bkgList[w.frameController.LatestText()], bkg)
-				}
+				bkgList, _ = domain.AppendLastResourceToResourceMap(bkgList, w.frameController.LatestText())
 			}
 		}
 
 		fmt.Printf("text: %s, len: %d\n", w.frameController.LatestText(), len(bkgList[w.frameController.LatestText()]))
 
-		bkg := w.lastBkg(bkgList[w.frameController.LatestText()])
-		if bkg == (domain.Resource{}) || bkg.IsLastPicture() {
-			bkg = w.createBackground()
-			bkgList[w.frameController.LatestText()] = append(bkgList[w.frameController.LatestText()], bkg)
-		}
-		bkg = w.drawIn(frame, bkg)
-		bkgList[w.frameController.LatestText()] = w.updateLatestBkg(bkgList[w.frameController.LatestText()], bkg)
+		bkgList = domain.DrawAndUpdateResources(frame, bkgList, w.frameController.LatestText())
 
 		c += 1
 
@@ -172,63 +143,4 @@ func (w GetFrameFromWhatsappVideo) readVideo(video *gocv.VideoCapture) (*gocv.Ma
 		return nil, !exists
 	}
 	return &img, !exists
-}
-
-func (w GetFrameFromWhatsappVideo) createBackground() domain.Resource {
-	minPoint := image.Point{X: 0, Y: 0}
-	maxPoint := image.Point{X: BACKGROUND_WIDTH, Y: BACKGROUND_HEIGHT}
-
-	img := image.NewRGBA(image.Rectangle{
-		Min: minPoint,
-		Max: maxPoint,
-	})
-
-	whiteColor := color.RGBA{255, 255, 255, 1.0}
-	draw.Draw(
-		img,
-		img.Bounds(),
-		&image.Uniform{whiteColor},
-		image.Point{},
-		draw.Src,
-	)
-	return domain.NewResource(img)
-}
-
-func (w *GetFrameFromWhatsappVideo) drawIn(frame image.Image, bkg domain.Resource) domain.Resource {
-	var drawer domain.Drawer
-	style := domain.Style{
-		MarginX:  112,
-		MarginY:  28,
-		PaddingX: 8,
-		PaddingY: 8,
-	}
-	if bkg.IsFirstPictureToFirstRow() {
-		drawer = domain.NewDrawerStartPoint(frame, style)
-	} else if bkg.IsFirstPictureToAnyRow() {
-		drawer = domain.NewDrawerStartPointFromRect(*bkg.Background(), frame, style)
-	} else {
-		drawer = domain.NewDrawerMiddlePoint(*bkg.Background(), frame, style)
-	}
-
-	bkg.UpdateBackground(drawer.CalculatePanel())
-	drawer.DrawIn(bkg.Image(), bkg.Background())
-	bkg.IncPictureCounter()
-	return bkg
-}
-
-func (w GetFrameFromWhatsappVideo) lastBkg(bkgList []domain.Resource) domain.Resource {
-	if len(bkgList) == 0 {
-		return domain.Resource{}
-	}
-	lastIndex := len(bkgList) - 1
-	return bkgList[lastIndex]
-}
-
-func (w GetFrameFromWhatsappVideo) updateLatestBkg(bkgList []domain.Resource, bkg domain.Resource) []domain.Resource {
-	if len(bkgList) == 0 {
-		return []domain.Resource{}
-	}
-	lastIndex := len(bkgList) - 1
-	bkgList[lastIndex] = bkg
-	return bkgList
 }

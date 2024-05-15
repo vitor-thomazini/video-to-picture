@@ -1,10 +1,19 @@
 package domain
 
-import "image"
+import (
+	"image"
+	"image/color"
+	"image/draw"
+)
 
 const (
 	TOTAL_FRAMES_BY_SCREEN = 6
 	SPLIT_FRAMES_SCREEN    = 3
+)
+
+const (
+	BACKGROUND_HEIGHT = 3508
+	BACKGROUND_WIDTH  = 2480
 )
 
 type Resource struct {
@@ -13,9 +22,20 @@ type Resource struct {
 	background     image.Rectangle
 }
 
-func NewResource(image *image.RGBA) Resource {
+func NewResource() Resource {
+	minPoint := image.Point{X: 0, Y: 0}
+	maxPoint := image.Point{X: BACKGROUND_WIDTH, Y: BACKGROUND_HEIGHT}
+
+	img := image.NewRGBA(image.Rectangle{
+		Min: minPoint,
+		Max: maxPoint,
+	})
+
+	whiteColor := image.Uniform{C: color.RGBA{255, 255, 255, 1.0}}
+	draw.Src.Draw(img, img.Bounds(), &whiteColor, image.Point{})
+
 	return Resource{
-		image:          image,
+		image:          img,
 		pictureCounter: 0,
 	}
 }
