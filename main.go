@@ -5,8 +5,11 @@ import (
 )
 
 func main() {
-	a := application.NewConvertVideoToImage("video.mp4", "result/images.pdf", 10)
-	a.Convert()
+	a := application.NewGetFrameFromWhatsappVideo()
+	a.Execute(application.GetFrameFromWhatsappVideoParams{
+		SrcFilepath: "video.mp4",
+		DstFilepath: "result",
+	})
 
 	// cmd.Execute()
 }
