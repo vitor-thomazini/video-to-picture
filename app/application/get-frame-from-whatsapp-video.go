@@ -73,9 +73,6 @@ func (w *GetFrameFromWhatsappVideo) Execute(params GetFrameFromWhatsappVideoPara
 	defer imageToText.CloseTransaction()
 
 	bkgList := make(map[string][]domain.Resource)
-
-	c := 0
-
 	for video.IsOpened() {
 		img, notExistsImg := w.readVideo(&video)
 		if notExistsImg {
@@ -86,40 +83,23 @@ func (w *GetFrameFromWhatsappVideo) Execute(params GetFrameFromWhatsappVideoPara
 			continue
 		}
 
-		// p := image.Point{X: domain.BACKGROUND_WIDTH, Y: domain.BACKGROUND_HEIGHT}
-		// dst := gocv.NewMat()
-		// gocv.Resize(*img, &dst, maxPoint, 0.1, 0.1, gocv.InterpolationLinear)
-		// i, _ := dst.ToImage()
-
+		texts := imageToText.Execute(*img)
 		frame := domain.NewFrame(*img).
 			Resize(domain.BACKGROUND_HEIGHT, domain.BACKGROUND_WIDTH)
-
-		texts := imageToText.Execute(frame)
 
 		// fmt.Println("texts", texts)
 		for _, text := range texts {
 			w.frameController.InitLatestText(text)
 			if w.frameController.latestText != text {
-				// Cria novo bkg caso esteja cheio
 				bkgList = domain.DrawAndUpdateResources(frame, bkgList, w.frameController.LatestText())
 				w.frameController.UpdateLatestText(text)
-				// Pode adicionar algo neste background
-				bkgList, _ = domain.AppendLastResourceToResourceMap(bkgList, w.frameController.LatestText())
-			} else {
-				// Cria novo bkg caso esteja cheio
-				bkgList, _ = domain.AppendLastResourceToResourceMap(bkgList, w.frameController.LatestText())
 			}
+			bkgList, _ = domain.AppendLastResourceToResourceMap(bkgList, w.frameController.LatestText())
 		}
 
-		fmt.Printf("text: %s, len: %d\n", w.frameController.LatestText(), len(bkgList[w.frameController.LatestText()]))
+		// fmt.Printf("text: %s, len: %d\n", w.frameController.LatestText(), len(bkgList[w.frameController.LatestText()]))
 
 		bkgList = domain.DrawAndUpdateResources(frame, bkgList, w.frameController.LatestText())
-
-		c += 1
-
-		if c > 50 {
-			break
-		}
 	}
 
 	fmt.Println(bkgList)

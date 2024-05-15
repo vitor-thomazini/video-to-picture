@@ -17,8 +17,8 @@ func NewFrame(img gocv.Mat) *Frame {
 	return &Frame{
 		img: img,
 		style: Style{
-			MarginX: 60,
-			MarginY: 60,
+			MarginX: -240,
+			MarginY: -320,
 		},
 	}
 }

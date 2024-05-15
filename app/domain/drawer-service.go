@@ -5,10 +5,10 @@ import "image"
 func Draw(frame image.Image, resource Resource) Resource {
 	var drawer Drawer
 	style := Style{
-		MarginX:  0,
-		MarginY:  0,
-		PaddingX: 0,
-		PaddingY: 0,
+		MarginX:  10,
+		MarginY:  10,
+		PaddingX: 10,
+		PaddingY: 10,
 	}
 	if resource.IsFirstPictureToFirstRow() {
 		drawer = NewDrawerStartPoint(frame, style)
