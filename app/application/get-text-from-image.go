@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image/png"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/otiai10/gosseract/v2"
@@ -85,6 +86,7 @@ func (g GetTextFromImage) Execute(img gocv.Mat) []string {
 		keys = append(keys, k)
 	}
 
+	sort.Strings(keys)
 	return keys
 }
 

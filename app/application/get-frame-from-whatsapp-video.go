@@ -9,29 +9,24 @@ import (
 )
 
 const (
-	MAX_VALUE_FRAMES_COUNTER = 20
+	MAX_VALUE_FRAMES_COUNTER = 12
 )
 
 type FrameController struct {
-	framesCounter         int
-	framesByScreenCounter int
-	latestText            string
+	framesCounter int
+	latestText    string
 }
 
 func NewFrameController() FrameController {
 	return FrameController{
-		framesCounter:         0,
-		framesByScreenCounter: 0,
+		framesCounter: 0,
 	}
 }
 
 func (c *FrameController) Wait() bool {
-	if c.framesCounter == MAX_VALUE_FRAMES_COUNTER {
-		c.framesCounter = 0
-		return false
-	}
+	wait := c.framesCounter%MAX_VALUE_FRAMES_COUNTER != 0
 	c.framesCounter += 1
-	return true
+	return wait
 }
 
 func (c *FrameController) InitLatestText(text string) {
@@ -51,8 +46,6 @@ func (c FrameController) LatestText() string {
 }
 
 type GetFrameFromWhatsappVideoParams struct {
-	SrcFilepath string
-	DstFilepath string
 }
 
 type GetFrameFromWhatsappVideo struct {
@@ -67,8 +60,8 @@ func NewGetFrameFromWhatsappVideo() GetFrameFromWhatsappVideo {
 	}
 }
 
-func (w *GetFrameFromWhatsappVideo) Execute(params GetFrameFromWhatsappVideoParams) {
-	video := w.captureVideo(params.SrcFilepath)
+func (w *GetFrameFromWhatsappVideo) Execute(srcFile string, dstDir string) {
+	video := w.captureVideo(srcFile)
 	imageToText := NewGetTextFromImage()
 	defer imageToText.CloseTransaction()
 
@@ -87,24 +80,25 @@ func (w *GetFrameFromWhatsappVideo) Execute(params GetFrameFromWhatsappVideoPara
 		frame := domain.NewFrame(*img).
 			Resize(domain.BACKGROUND_HEIGHT, domain.BACKGROUND_WIDTH)
 
-		// fmt.Println("texts", texts)
 		for _, text := range texts {
 			w.frameController.InitLatestText(text)
-			if w.frameController.latestText != text {
+			if w.frameController.latestText != text && len(texts) > 1 {
 				bkgList = domain.DrawAndUpdateResources(frame, bkgList, w.frameController.LatestText())
+			}
+
+			if w.frameController.latestText != text {
 				w.frameController.UpdateLatestText(text)
 			}
+
 			bkgList, _ = domain.AppendLastResourceToResourceMap(bkgList, w.frameController.LatestText())
 		}
-
-		// fmt.Printf("text: %s, len: %d\n", w.frameController.LatestText(), len(bkgList[w.frameController.LatestText()]))
 
 		bkgList = domain.DrawAndUpdateResources(frame, bkgList, w.frameController.LatestText())
 	}
 
 	fmt.Println(bkgList)
 
-	w.saveToPdf.Execute(params.DstFilepath, bkgList)
+	w.saveToPdf.Execute(dstDir, bkgList)
 }
 
 func (w GetFrameFromWhatsappVideo) captureVideo(srcFilepath string) gocv.VideoCapture {
