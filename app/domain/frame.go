@@ -23,16 +23,16 @@ func NewFrame(img gocv.Mat) *Frame {
 	}
 }
 
-func (f *Frame) Resize(panelWidth int, panelHeight int) image.Image {
+func (f *Frame) Resize(panelWidth int, panelHeight int) (image.Image, gocv.Mat) {
 	dst := gocv.NewMat()
 	maxPoint := f.getPointFromPanel(panelWidth, panelHeight)
-	gocv.Resize(f.img, &dst, maxPoint, 0.1, 0.1, gocv.InterpolationLinear)
+	gocv.Resize(f.img, &dst, maxPoint, 0.9, 0.9, gocv.InterpolationLinear)
 
 	img, err := dst.ToImage()
 	if err != nil {
 		log.Fatalln(err)
 	}
-	return img
+	return img, dst
 }
 
 func (f *Frame) getPointFromPanel(panelWidth int, panelHeight int) image.Point {

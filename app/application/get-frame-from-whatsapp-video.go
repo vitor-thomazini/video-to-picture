@@ -3,13 +3,14 @@ package application
 import (
 	"fmt"
 	"log"
+	"sort"
 
 	"github.com/vitor-thomazini/video-to-picture/app/domain"
 	"gocv.io/x/gocv"
 )
 
 const (
-	MAX_VALUE_FRAMES_COUNTER = 12
+	MAX_VALUE_FRAMES_COUNTER = 18 //12
 )
 
 type FrameController struct {
@@ -77,23 +78,22 @@ func (w *GetFrameFromWhatsappVideo) Execute(srcFile string, dstDir string) {
 		}
 
 		texts := imageToText.Execute(*img)
-		frame := domain.NewFrame(*img).
+		frame, _ := domain.NewFrame(*img).
 			Resize(domain.BACKGROUND_HEIGHT, domain.BACKGROUND_WIDTH)
 
+		fmt.Println(texts)
 		for _, text := range texts {
-			w.frameController.InitLatestText(text)
-			if w.frameController.latestText != text && len(texts) > 1 {
-				bkgList = domain.DrawAndUpdateResources(frame, bkgList, w.frameController.LatestText())
-			}
-
-			if w.frameController.latestText != text {
-				w.frameController.UpdateLatestText(text)
-			}
-
-			bkgList, _ = domain.AppendLastResourceToResourceMap(bkgList, w.frameController.LatestText())
+			bkgList = domain.DrawAndUpdateResources(frame, bkgList, text)
 		}
 
-		bkgList = domain.DrawAndUpdateResources(frame, bkgList, w.frameController.LatestText())
+		if len(texts) > 0 {
+			sort.Slice(texts, func(i, j int) bool {
+				return texts[j] < texts[i]
+			})
+			w.frameController.UpdateLatestText(texts[0])
+		} else {
+			bkgList = domain.DrawAndUpdateResources(frame, bkgList, w.frameController.LatestText())
+		}
 	}
 
 	fmt.Println(bkgList)

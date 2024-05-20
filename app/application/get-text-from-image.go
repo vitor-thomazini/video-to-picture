@@ -22,9 +22,6 @@ type GetTextFromImage struct {
 	allTextMatchers []string
 }
 
-// Pesquisa sobre May 3, 2024 dus
-//
-
 func NewGetTextFromImage() GetTextFromImage {
 	return GetTextFromImage{
 		client: gosseract.NewClient(),

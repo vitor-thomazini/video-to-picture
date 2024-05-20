@@ -19,7 +19,8 @@ func AppendResourceMap(mapping map[string][]Resource, key string, value Resource
 }
 
 func LastResource(mapping map[string][]Resource, key string) Resource {
-	if len(mapping[key]) == 0 {
+	_, exists := mapping[key]
+	if !exists {
 		return Resource{}
 	}
 	lastIndex := len(mapping[key]) - 1

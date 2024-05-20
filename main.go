@@ -8,8 +8,8 @@ import (
 )
 
 func main() {
-	videoFilepath := flag.String("video", "", "Video filepath")
-	dstDir := flag.String("dir", "", "Target directory")
+	videoFilepath := flag.String("video", "/Users/vitor/Library/CloudStorage/OneDrive-Personal/video1.mp4", "Video filepath")
+	dstDir := flag.String("dir", "/Users/vitor/Library/CloudStorage/OneDrive-Personal/test", "Target directory")
 	flag.Parse()
 
 	if videoFilepath == nil || *videoFilepath == "" {
