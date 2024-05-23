@@ -4,60 +4,24 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strings"
 
 	"github.com/vitor-thomazini/video-to-picture/app/domain"
 	"gocv.io/x/gocv"
 )
 
-const (
-	MAX_VALUE_FRAMES_COUNTER = 18 //12
-)
-
-type FrameController struct {
-	framesCounter int
-	latestText    string
-}
-
-func NewFrameController() FrameController {
-	return FrameController{
-		framesCounter: 0,
-	}
-}
-
-func (c *FrameController) Wait() bool {
-	wait := c.framesCounter%MAX_VALUE_FRAMES_COUNTER != 0
-	c.framesCounter += 1
-	return wait
-}
-
-func (c *FrameController) InitLatestText(text string) {
-	if c.latestText == "" {
-		c.latestText = text
-	}
-}
-
-func (c *FrameController) UpdateLatestText(text string) {
-	if c.latestText != "none" {
-		c.latestText = text
-	}
-}
-
-func (c FrameController) LatestText() string {
-	return c.latestText
-}
-
 type GetFrameFromWhatsappVideoParams struct {
 }
 
 type GetFrameFromWhatsappVideo struct {
-	frameController FrameController
+	frameController domain.FrameController
 	saveToPdf       *SaveToPdf
 }
 
 func NewGetFrameFromWhatsappVideo() GetFrameFromWhatsappVideo {
 	return GetFrameFromWhatsappVideo{
-		frameController: NewFrameController(),
-		saveToPdf:       NewSaveToPdf(),
+
+		saveToPdf: NewSaveToPdf(),
 	}
 }
 
@@ -66,7 +30,11 @@ func (w *GetFrameFromWhatsappVideo) Execute(srcFile string, dstDir string) {
 	imageToText := NewGetTextFromImage()
 	defer imageToText.CloseTransaction()
 
-	bkgList := make(map[string][]domain.Resource)
+	saveStorage := NewSaveStorageBatch()
+	storage := NewLoadStorageBatch().Execute()
+	w.frameController = domain.NewFrameController(storage.LatestIndex, 1000)
+
+	bkgList := storage.GetData()
 	for video.IsOpened() {
 		img, notExistsImg := w.readVideo(&video)
 		if notExistsImg {
@@ -81,7 +49,7 @@ func (w *GetFrameFromWhatsappVideo) Execute(srcFile string, dstDir string) {
 		frame, _ := domain.NewFrame(*img).
 			Resize(domain.BACKGROUND_HEIGHT, domain.BACKGROUND_WIDTH)
 
-		fmt.Println(texts)
+		fmt.Printf("%d - %s\n", w.frameController.Counter(), strings.Join(texts, " "))
 		for _, text := range texts {
 			bkgList = domain.DrawAndUpdateResources(frame, bkgList, text)
 		}
@@ -94,11 +62,17 @@ func (w *GetFrameFromWhatsappVideo) Execute(srcFile string, dstDir string) {
 		} else {
 			bkgList = domain.DrawAndUpdateResources(frame, bkgList, w.frameController.LatestText())
 		}
+
+		if w.frameController.Counter() >= w.frameController.EndInIndexFrame() {
+			saveStorage.Execute(w.frameController.LatestText(), w.frameController.Counter(), bkgList)
+			break
+		}
+
 	}
 
 	fmt.Println(bkgList)
 
-	w.saveToPdf.Execute(dstDir, bkgList)
+	// w.saveToPdf.Execute(dstDir, bkgList)
 }
 
 func (w GetFrameFromWhatsappVideo) captureVideo(srcFilepath string) gocv.VideoCapture {

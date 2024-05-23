@@ -1,2 +1,2 @@
 build:
-	go build -o whatsapp-converter -ldflags="-s -w" main.go	
+	env CGO_ENABLED=1 go build -o whatsapp-converter main.go	

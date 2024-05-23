@@ -17,9 +17,9 @@ const (
 )
 
 type Resource struct {
-	image          *image.RGBA
-	pictureCounter int
-	background     image.Rectangle
+	Image          *image.RGBA
+	PictureCounter int
+	Background     image.Rectangle
 }
 
 func NewResource() Resource {
@@ -35,35 +35,27 @@ func NewResource() Resource {
 	draw.Src.Draw(img, img.Bounds(), &whiteColor, image.Point{})
 
 	return Resource{
-		image:          img,
-		pictureCounter: 0,
+		Image:          img,
+		PictureCounter: 0,
 	}
 }
 
 func (r *Resource) UpdateBackground(background image.Rectangle) {
-	r.background = background
-}
-
-func (r Resource) Image() *image.RGBA {
-	return r.image
-}
-
-func (r Resource) Background() *image.Rectangle {
-	return &r.background
+	r.Background = background
 }
 
 func (q Resource) IsFirstPictureToFirstRow() bool {
-	return q.pictureCounter == 0
+	return q.PictureCounter == 0
 }
 
 func (q Resource) IsFirstPictureToAnyRow() bool {
-	return (q.pictureCounter != 0) && (q.pictureCounter%SPLIT_FRAMES_SCREEN == 0)
+	return (q.PictureCounter != 0) && (q.PictureCounter%SPLIT_FRAMES_SCREEN == 0)
 }
 
 func (q Resource) IsLastPicture() bool {
-	return q.pictureCounter >= TOTAL_FRAMES_BY_SCREEN
+	return q.PictureCounter >= TOTAL_FRAMES_BY_SCREEN
 }
 
 func (q *Resource) IncPictureCounter() {
-	q.pictureCounter += 1
+	q.PictureCounter += 1
 }

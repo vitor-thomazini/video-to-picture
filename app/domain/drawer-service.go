@@ -13,13 +13,13 @@ func Draw(frame image.Image, resource Resource) Resource {
 	if resource.IsFirstPictureToFirstRow() {
 		drawer = NewDrawerStartPoint(frame, style)
 	} else if resource.IsFirstPictureToAnyRow() {
-		drawer = NewDrawerStartPointFromRect(*resource.Background(), frame, style)
+		drawer = NewDrawerStartPointFromRect(resource.Background, frame, style)
 	} else {
-		drawer = NewDrawerMiddlePoint(*resource.Background(), frame, style)
+		drawer = NewDrawerMiddlePoint(resource.Background, frame, style)
 	}
 
 	resource.UpdateBackground(drawer.CalculatePanel())
-	drawer.DrawIn(resource.Image(), resource.Background())
+	drawer.DrawIn(resource.Image, &resource.Background)
 	resource.IncPictureCounter()
 	return resource
 }

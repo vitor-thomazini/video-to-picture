@@ -24,7 +24,7 @@ func (p SaveToPdf) Execute(dirPath string, imagesMap map[string][]domain.Resourc
 
 		for _, image := range imagesList {
 			pdf.AddPage()
-			pdf.ImageFrom(image.Image(), 0, 0, p.a4PageSize())
+			pdf.ImageFrom(image.Image, 0, 0, p.a4PageSize())
 		}
 
 		path := filepath.Join(dirPath, name+".whatsapp.pdf")
