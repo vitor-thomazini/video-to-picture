@@ -23,12 +23,12 @@ type GetTextFromImage struct {
 }
 
 func NewGetTextFromImage() GetTextFromImage {
-	return GetTextFromImage{
-		client: gosseract.NewClient(),
-	}
+	return GetTextFromImage{}
 }
 
 func (g GetTextFromImage) Execute(img gocv.Mat) []string {
+
+	g.client = gosseract.NewClient()
 	month := map[string]string{
 		"January":   "01",
 		"February":  "02",
@@ -55,6 +55,7 @@ func (g GetTextFromImage) Execute(img gocv.Mat) []string {
 	if err != nil {
 		fmt.Println("failed to create buffer", err)
 	}
+
 	g.client.SetImageFromBytes(buff.Bytes())
 	text, _ := g.client.Text()
 	text = strings.ReplaceAll(text, " ", "")
@@ -83,10 +84,7 @@ func (g GetTextFromImage) Execute(img gocv.Mat) []string {
 		keys = append(keys, k)
 	}
 
+	g.client.Close()
 	sort.Strings(keys)
 	return keys
-}
-
-func (g GetTextFromImage) CloseTransaction() {
-	g.client.Close()
 }

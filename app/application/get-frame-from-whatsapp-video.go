@@ -3,6 +3,7 @@ package application
 import (
 	"fmt"
 	"log"
+	"runtime"
 	"sort"
 
 	"github.com/vitor-thomazini/video-to-picture/app/domain"
@@ -64,9 +65,11 @@ func NewGetFrameFromWhatsappVideo() GetFrameFromWhatsappVideo {
 func (w *GetFrameFromWhatsappVideo) Execute(srcFile string, dstDir string) {
 	video := w.captureVideo(srcFile)
 	imageToText := NewGetTextFromImage()
-	defer imageToText.CloseTransaction()
+
+	// s := NewSaveOneDateInPdf()
 
 	bkgList := make(map[string][]domain.Resource)
+	names := make([]string, 0)
 	for video.IsOpened() {
 		img, notExistsImg := w.readVideo(&video)
 		if notExistsImg {
@@ -78,12 +81,13 @@ func (w *GetFrameFromWhatsappVideo) Execute(srcFile string, dstDir string) {
 		}
 
 		texts := imageToText.Execute(*img)
+
 		frame, _ := domain.NewFrame(*img).
 			Resize(domain.BACKGROUND_HEIGHT, domain.BACKGROUND_WIDTH)
 
-		fmt.Println(texts)
 		for _, text := range texts {
 			bkgList = domain.DrawAndUpdateResources(frame, bkgList, text)
+			names = append(names, text)
 		}
 
 		if len(texts) > 0 {
@@ -94,6 +98,21 @@ func (w *GetFrameFromWhatsappVideo) Execute(srcFile string, dstDir string) {
 		} else {
 			bkgList = domain.DrawAndUpdateResources(frame, bkgList, w.frameController.LatestText())
 		}
+
+		fmt.Println(texts)
+		if w.CanSaveOldDates(names) {
+			PrintMemUsage()
+			saveName := names[0]
+			// s.Execute(dstDir, saveName, bkgList[saveName])
+			delete(bkgList, saveName)
+			names = w.RemoveAllElement(saveName, names)
+			PrintMemUsage()
+		}
+
+		// fmt.Println(names.)
+		// if dateCounter == 10 {
+		//
+		// }
 	}
 
 	fmt.Println(bkgList)
@@ -117,4 +136,42 @@ func (w GetFrameFromWhatsappVideo) readVideo(video *gocv.VideoCapture) (*gocv.Ma
 		return nil, !exists
 	}
 	return &img, !exists
+}
+
+func (w GetFrameFromWhatsappVideo) CanSaveOldDates(names []string) bool {
+	l := names[0]
+	counter := 0
+
+	for _, nm := range names {
+		if nm != l {
+			counter += 1
+		}
+	}
+
+	return counter > 15
+}
+
+func (w GetFrameFromWhatsappVideo) RemoveAllElement(val string, names []string) []string {
+	j := 0
+	for _, v := range names {
+		if v != val {
+			names[j] = v
+			j++
+		}
+	}
+	return names[:j]
+}
+
+func PrintMemUsage() {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	// For info on each, see: https://golang.org/pkg/runtime/#MemStats
+	fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
+	fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
+	fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
+	fmt.Printf("\tNumGC = %v\n", m.NumGC)
+}
+
+func bToMb(b uint64) uint64 {
+	return b / 1024 / 1024
 }
