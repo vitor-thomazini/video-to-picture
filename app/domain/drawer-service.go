@@ -1,6 +1,10 @@
 package domain
 
-import "image"
+import (
+	"image"
+
+	"github.com/vitor-thomazini/video-to-picture/app/utils"
+)
 
 func Draw(frame image.Image, resource Resource) Resource {
 	var drawer Drawer
@@ -25,7 +29,10 @@ func Draw(frame image.Image, resource Resource) Resource {
 }
 
 func DrawAndUpdateResources(image image.Image, mapping map[string][]Resource, key string) map[string][]Resource {
+	utils.PrintMemUsage()
 	bkgList, bkg := AppendLastResourceToResourceMap(mapping, key)
 	bkg = Draw(image, bkg)
-	return AppendResourceMap(bkgList, key, bkg)
+	a := AppendResourceMap(bkgList, key, bkg)
+	utils.PrintMemUsage()
+	return a
 }

@@ -3,10 +3,10 @@ package application
 import (
 	"fmt"
 	"log"
-	"runtime"
 	"sort"
 
 	"github.com/vitor-thomazini/video-to-picture/app/domain"
+	"github.com/vitor-thomazini/video-to-picture/app/utils"
 	"gocv.io/x/gocv"
 )
 
@@ -101,12 +101,11 @@ func (w *GetFrameFromWhatsappVideo) Execute(srcFile string, dstDir string) {
 
 		fmt.Println(texts)
 		if w.CanSaveOldDates(names) {
-			PrintMemUsage()
 			saveName := names[0]
 			// s.Execute(dstDir, saveName, bkgList[saveName])
 			delete(bkgList, saveName)
 			names = w.RemoveAllElement(saveName, names)
-			PrintMemUsage()
+			utils.PrintMemUsage()
 		}
 
 		// fmt.Println(names.)
@@ -160,18 +159,4 @@ func (w GetFrameFromWhatsappVideo) RemoveAllElement(val string, names []string) 
 		}
 	}
 	return names[:j]
-}
-
-func PrintMemUsage() {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	// For info on each, see: https://golang.org/pkg/runtime/#MemStats
-	fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
-	fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
-	fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
-	fmt.Printf("\tNumGC = %v\n", m.NumGC)
-}
-
-func bToMb(b uint64) uint64 {
-	return b / 1024 / 1024
 }
