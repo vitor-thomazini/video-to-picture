@@ -5,16 +5,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-
-            "name": "Launch Package",
-            "type": "go",
+            "name": "Python Debugger: Current File with Arguments",
+            "type": "debugpy",
             "request": "launch",
-            "mode": "auto",
-            "program": "main.go",
-            "env": {
-                "LIBRARY_PATH": "/opt/homebrew/lib",
-                "CPATH": "/opt/homebrew/include"
-            }
+            "program": "src/main.py",
+            "console": "integratedTerminal",
+            // "args": "${command:pickArgs}"
         }
     ]
 }
